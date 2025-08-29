@@ -1,5 +1,3 @@
-local Plugin = require("lazy.core.plugin")
-
 ---@class lazyvim.util.plugin
 local M = {}
 
@@ -43,7 +41,9 @@ function M.save_core()
   if vim.v.vim_did_enter == 1 then
     return
   end
-  M.core_imports = vim.deepcopy(require("lazy.core.config").spec.modules)
+  -- Note: mini.deps doesn't have a central spec like lazy.nvim
+  -- We'll track this differently if needed
+  M.core_imports = {}
 end
 
 function M.setup()
@@ -65,12 +65,9 @@ function M.setup()
 end
 
 function M.extra_idx(name)
-  local Config = require("lazy.core.config")
-  for i, extra in ipairs(Config.spec.modules) do
-    if extra == "lazyvim.plugins.extras." .. name then
-      return i
-    end
-  end
+  -- Note: mini.deps doesn't have a central module tracking system like lazy.nvim
+  -- This function may need to be reimplemented or removed
+  return nil
 end
 
 function M.lazy_file()
@@ -82,41 +79,15 @@ function M.lazy_file()
 end
 
 function M.fix_imports()
-  local defaults ---@type table<string, LazyVimDefault>
-  Plugin.Spec.import = LazyVim.inject.args(Plugin.Spec.import, function(_, spec)
-    if M.handle_defaults and LazyVim.config.json.loaded then
-      -- extra disabled by defaults?
-      defaults = defaults or LazyVim.config.get_defaults()
-      local def = defaults[spec.import]
-      if def and def.enabled == false then
-        return false
-      end
-    end
-    local dep = M.deprecated_extras[spec and spec.import]
-    if dep then
-      dep = dep .. "\n" .. "Please remove the extra from `lazyvim.json` to hide this warning."
-      LazyVim.warn(dep, { title = "LazyVim", once = true, stacktrace = true, stacklevel = 6 })
-      return false
-    end
-  end)
+  -- Note: mini.deps doesn't use the same import system as lazy.nvim
+  -- This function would need to be reimplemented to work with the new plugin loading system
+  -- For now, we'll disable this functionality
 end
 
 function M.fix_renames()
-  Plugin.Spec.add = LazyVim.inject.args(Plugin.Spec.add, function(self, plugin)
-    if type(plugin) == "table" then
-      if M.renames[plugin[1]] then
-        LazyVim.warn(
-          ("Plugin `%s` was renamed to `%s`.\nPlease update your config for `%s`"):format(
-            plugin[1],
-            M.renames[plugin[1]],
-            self.importing or "LazyVim"
-          ),
-          { title = "LazyVim" }
-        )
-        plugin[1] = M.renames[plugin[1]]
-      end
-    end
-  end)
+  -- Note: mini.deps doesn't have Plugin.Spec like lazy.nvim
+  -- Plugin renaming would need to be handled differently in the conversion process
+  -- For now, we'll disable this functionality
 end
 
 return M

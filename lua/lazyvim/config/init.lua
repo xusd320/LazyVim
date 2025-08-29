@@ -201,47 +201,16 @@ function M.setup(opts)
       end, { desc = "Manage LazyVim extras" })
 
       vim.api.nvim_create_user_command("LazyHealth", function()
-        vim.cmd([[Lazy! load all]])
+        -- Note: No equivalent to "Lazy! load all" in mini.deps
+        -- All plugins are loaded when added
         vim.cmd([[checkhealth]])
-      end, { desc = "Load all plugins and run :checkhealth" })
+      end, { desc = "Run :checkhealth" })
 
-      local health = require("lazy.health")
-      vim.list_extend(health.valid, {
-        "recommended",
-        "desc",
-        "vscode",
-      })
+      -- Note: mini.deps doesn't have health checks like lazy.nvim
+      -- Removed lazy.nvim specific health validation
 
-      if vim.g.lazyvim_check_order == false then
-        return
-      end
-
-      -- Check lazy.nvim import order
-      local imports = require("lazy.core.config").spec.modules
-      local function find(pat, last)
-        for i = last and #imports or 1, last and 1 or #imports, last and -1 or 1 do
-          if imports[i]:find(pat) then
-            return i
-          end
-        end
-      end
-      local lazyvim_plugins = find("^lazyvim%.plugins$")
-      local extras = find("^lazyvim%.plugins%.extras%.", true) or lazyvim_plugins
-      local plugins = find("^plugins$") or math.huge
-      if lazyvim_plugins ~= 1 or extras > plugins then
-        local msg = {
-          "The order of your `lazy.nvim` imports is incorrect:",
-          "- `lazyvim.plugins` should be first",
-          "- followed by any `lazyvim.plugins.extras`",
-          "- and finally your own `plugins`",
-          "",
-          "If you think you know what you're doing, you can disable this check with:",
-          "```lua",
-          "vim.g.lazyvim_check_order = false",
-          "```",
-        }
-        vim.notify(table.concat(msg, "\n"), "warn", { title = "LazyVim" })
-      end
+      -- Note: mini.deps doesn't have import order validation like lazy.nvim
+      -- The plugin loading order is determined by the sequence of add() calls
     end,
   })
 
@@ -283,7 +252,9 @@ end
 ---@param name "autocmds" | "options" | "keymaps"
 function M.load(name)
   local function _load(mod)
-    if require("lazy.core.cache").find(mod)[1] then
+    -- Simple module loading without lazy.nvim cache
+    local ok, _ = pcall(require, mod)
+    if not ok then
       LazyVim.try(function()
         require(mod)
       end, { msg = "Failed loading " .. mod })
@@ -296,10 +267,7 @@ function M.load(name)
     vim.api.nvim_exec_autocmds("User", { pattern = pattern .. "Defaults", modeline = false })
   end
   _load("config." .. name)
-  if vim.bo.filetype == "lazy" then
-    -- HACK: LazyVim may have overwritten options of the Lazy ui, so reset this here
-    vim.cmd([[do VimResized]])
-  end
+  -- Note: No "lazy" filetype in mini.deps context
   vim.api.nvim_exec_autocmds("User", { pattern = pattern, modeline = false })
 end
 
@@ -309,10 +277,9 @@ function M.init()
     return
   end
   M.did_init = true
-  local plugin = require("lazy.core.config").spec.plugins.LazyVim
-  if plugin then
-    vim.opt.rtp:append(plugin.dir)
-  end
+  
+  -- Note: In mini.deps, we don't have a central plugin spec like lazy.nvim
+  -- LazyVim itself is loaded via the current repository structure
 
   package.preload["lazyvim.plugins.lsp.format"] = function()
     LazyVim.deprecate([[require("lazyvim.plugins.lsp.format")]], [[LazyVim.format]])
@@ -322,7 +289,7 @@ function M.init()
   -- delay notifications till vim.notify was replaced or after 500ms
   LazyVim.lazy_notify()
 
-  -- load options here, before lazy init while sourcing plugin modules
+  -- load options here, before plugin loading
   -- this is needed to make sure options will be correctly applied
   -- after installing missing plugins
   M.load("options")
